@@ -1,0 +1,36 @@
+{
+  "name": "razorrecover-server",
+  "version": "1.0.0",
+  "description": "RazorRecover AI Backend Server",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "migrate": "node src/db/migrate.js",
+    "seed": "node src/db/seed.js",
+    "test:razorpay": "node src/scripts/testRazorpayIntegration.js",
+    "test:webhook": "node src/scripts/testWebhookIngestion.js",
+    "test:risk": "node src/scripts/testRiskEngine.js",
+    "test:ai": "node src/scripts/testAiDiagnosis.js",
+    "test:decision": "node src/scripts/testDecisionEngine.js",
+    "test:guardrail": "node src/scripts/testGuardrailEngine.js",
+    "test:execution": "node src/scripts/testPaymentLinkExecution.js",
+    "test:phase12": "node src/scripts/testPhase12Webhooks.js",
+    "test:phase14": "node src/scripts/testPhase14Simulator.js",
+    "test:phase17": "node src/scripts/testPhase17Benchmark.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "pg": "^8.23.0",
+    "razorpay": "^2.9.8"
+  },
+  "devDependencies": {
+    "ngrok": "^5.0.0-beta.2",
+    "node-fetch": "^3.3.2",
+    "pg-mem": "^3.0.14",
+    "tunnelmole": "^2.2.14"
+  }
+}
