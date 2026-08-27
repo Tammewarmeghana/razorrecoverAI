@@ -1,5 +1,5 @@
 :root {
-  --bg-obsidian: #090d16;
+  --bg-obsidian: #070b14;
   --bg-card: #0f172a;
   --bg-card-hover: #1e293b;
   --border-color: rgba(255, 255, 255, 0.08);
@@ -164,12 +164,12 @@ body {
   background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
   color: white;
   border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
-  font-size: 0.8rem;
-  font-weight: 700;
+  padding: 0.55rem 1.15rem;
+  border-radius: 0.55rem;
+  font-size: 0.85rem;
+  font-weight: 800;
   cursor: pointer;
-  box-shadow: 0 3px 10px rgba(139, 92, 246, 0.3);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.35);
   transition: transform 0.15s;
 }
 
@@ -207,8 +207,10 @@ body {
   background-color: var(--bg-card);
   border: 1px solid var(--border-color);
   color: var(--text-main);
-  padding: 0.5rem;
+  padding: 0.55rem 0.85rem;
   border-radius: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 700;
   cursor: pointer;
 }
 
@@ -416,6 +418,41 @@ body {
 .fill-violet { background-color: var(--violet); }
 .fill-cyan { background-color: var(--cyan); }
 
+/* Navigation Tabs Bar - Fixed & Styled */
+.tabs-bar {
+  display: flex;
+  gap: 0.75rem;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  padding: 0.65rem 0.85rem;
+  border-radius: 0.75rem;
+  overflow-x: auto;
+}
+
+.tab-btn {
+  background-color: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 0.6rem 1.2rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.tab-btn:hover {
+  color: var(--text-main);
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.tab-btn.active {
+  color: var(--cyan);
+  background-color: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
 /* Table Controls Bar ABOVE Table */
 .cases-section-container {
   display: flex;
@@ -533,6 +570,90 @@ body {
 .btn-inspect-action:hover {
   background-color: var(--cyan);
   color: #050811;
+}
+
+/* Simulator Form Modal Styles */
+.sim-form-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.sim-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.sim-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.sim-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.sim-select-input, .sim-text-input {
+  background-color: #050811;
+  border: 1px solid var(--border-color);
+  color: white;
+  padding: 0.6rem 0.85rem;
+  border-radius: 0.5rem;
+  font-size: 0.85rem;
+  outline: none;
+}
+
+.sim-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.sim-snapshot-card {
+  background-color: #050811;
+  border: 1px solid var(--emerald-border);
+  padding: 1.15rem 1.35rem;
+  border-radius: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.snap-header-title {
+  font-size: 0.95rem;
+  color: var(--emerald);
+  font-weight: 800;
+}
+
+.snapshot-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.85rem;
+}
+
+.snap-item-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  padding: 0.75rem 0.85rem;
+  border-radius: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.snap-title {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.snap-value {
+  font-size: 0.85rem;
+  font-weight: 800;
 }
 
 /* Luxury Inspector Modal */
@@ -823,12 +944,12 @@ body {
   background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   color: white;
   border: none;
-  padding: 0.75rem 1.5rem;
-  border-radius: 0.6rem;
-  font-size: 0.9rem;
+  padding: 0.7rem 1.35rem;
+  border-radius: 0.55rem;
+  font-size: 0.85rem;
   font-weight: 800;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
 }
 
 .recovered-success-banner {
