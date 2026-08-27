@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { fetchMetrics, fetchRecoveryCases, fetchAuditLogs, checkHealth } from './services/api';
+import ExecutiveHeader from './components/ExecutiveHeader';
 import MetricsOverview from './components/MetricsOverview';
+import RecoveryFunnel from './components/RecoveryFunnel';
+import AiIntelligenceAnalytics from './components/AiIntelligenceAnalytics';
 import RecoveryCasesTable from './components/RecoveryCasesTable';
 import CaseDetailModal from './components/CaseDetailModal';
-import AuditLogStream from './components/AuditLogStream';
-import JudgeDemoBar from './components/JudgeDemoBar';
+import LiveActivityFeed from './components/LiveActivityFeed';
 import LiveSimulatorModal from './components/LiveSimulatorModal';
 import HumanApprovalQueue from './components/HumanApprovalQueue';
 import PolicyBenchmarkTab from './components/PolicyBenchmarkTab';
@@ -13,17 +15,18 @@ import './App.css';
 function App() {
   const [activeTab, setActiveTab] = useState('cases'); // 'cases' | 'approval' | 'policy' | 'audit'
   const [healthStatus, setHealthStatus] = useState(null);
+  const [lastUpdatedTime, setLastUpdatedTime] = useState(null);
   
   // Dashboard Data
   const [metrics, setMetrics] = useState(null);
   const [cases, setCases] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
   
-  // Loading States
+  // Loading & Connection Error States
   const [loadingMetrics, setLoadingMetrics] = useState(false);
   const [loadingCases, setLoadingCases] = useState(false);
   const [loadingAudit, setLoadingAudit] = useState(false);
-  const [error, setError] = useState(null);
+  const [connectionError, setConnectionError] = useState(null);
 
   // Modals
   const [selectedCaseId, setSelectedCaseId] = useState(null);
@@ -36,53 +39,57 @@ function App() {
     search: ''
   });
 
-  // Load Health Status & Metrics on Mount
-  useEffect(() => {
-    loadHealth();
-    loadMetrics();
-    loadCases();
-  }, []);
+  // Track initial load vs polling refresh
+  const initialLoadedRef = useRef(false);
 
-  // Reload cases when filters change
+  // Load Health & Data on Mount + Polling Loop (10s)
   useEffect(() => {
-    loadCases();
+    loadAllData(true);
+
+    const intervalId = setInterval(() => {
+      loadAllData(false);
+    }, 10000);
+
+    return () => clearInterval(intervalId);
   }, [filters.status, filters.riskLevel]);
 
-  const loadHealth = async () => {
-    try {
-      const res = await checkHealth();
-      setHealthStatus(res);
-    } catch (err) {
-      setHealthStatus({ status: 'offline', message: err.message });
+  const loadAllData = async (isInitial = false) => {
+    if (isInitial && !initialLoadedRef.current) {
+      setLoadingMetrics(true);
+      setLoadingCases(true);
     }
-  };
 
-  const loadMetrics = async () => {
-    setLoadingMetrics(true);
     try {
-      const res = await fetchMetrics();
-      setMetrics(res.data);
+      const [hRes, mRes, cRes] = await Promise.all([
+        checkHealth().catch(err => ({ status: 'offline', error: err.message })),
+        fetchMetrics().catch(err => null),
+        fetchRecoveryCases({
+          status: filters.status,
+          riskLevel: filters.riskLevel,
+          search: filters.search,
+          limit: 100
+        }).catch(err => null)
+      ]);
+
+      setHealthStatus(hRes);
+
+      if (mRes && mRes.data) {
+        setMetrics(mRes.data);
+      }
+
+      if (cRes && cRes.data) {
+        setCases(cRes.data);
+        setConnectionError(null);
+      } else if (!mRes) {
+        setConnectionError('Backend API server unreachable');
+      }
+
+      setLastUpdatedTime(new Date());
+      initialLoadedRef.current = true;
     } catch (err) {
-      console.error('Failed to load metrics:', err);
+      setConnectionError(err.message || 'Connection failed');
     } finally {
       setLoadingMetrics(false);
-    }
-  };
-
-  const loadCases = async () => {
-    setLoadingCases(true);
-    setError(null);
-    try {
-      const res = await fetchRecoveryCases({
-        status: filters.status,
-        riskLevel: filters.riskLevel,
-        search: filters.search,
-        limit: 100
-      });
-      setCases(res.data || []);
-    } catch (err) {
-      setError(err.message || 'Failed to load recovery cases');
-    } finally {
       setLoadingCases(false);
     }
   };
@@ -110,9 +117,18 @@ function App() {
     }
   };
 
+  const handleOpenSimulator = () => {
+    setSelectedCaseId(null);
+    setShowSimulatorModal(true);
+  };
+
+  const handleSelectCase = (caseObj) => {
+    setShowSimulatorModal(false);
+    setSelectedCaseId(caseObj.id);
+  };
+
   const handleRefreshAll = () => {
-    loadMetrics();
-    loadCases();
+    loadAllData(false);
     if (activeTab === 'audit') loadAuditLogs();
   };
 
@@ -123,49 +139,42 @@ function App() {
   ).length;
 
   return (
-    <div className="app-container">
-      {/* Hackathon Judge Demo Banner Bar */}
-      <JudgeDemoBar
-        onOpenSimulator={() => setShowSimulatorModal(true)}
+    <div className="app-container executive-app">
+      {/* Executive Top Header */}
+      <ExecutiveHeader
+        healthStatus={healthStatus}
+        lastUpdatedTime={lastUpdatedTime}
+        onOpenSimulator={handleOpenSimulator}
         pendingApprovalsCount={pendingApprovalsCount}
         onOpenApprovals={() => setActiveTab('approval')}
+        onRefresh={handleRefreshAll}
       />
 
-      {/* Top Navbar */}
-      <header className="navbar">
-        <div className="nav-brand">
-          <div className="brand-icon">⚡</div>
-          <div>
-            <h1 className="brand-title">RazorRecover AI</h1>
-            <p className="brand-subtitle">Autonomous Revenue Recovery Engine for Razorpay</p>
-          </div>
-        </div>
-
-        <div className="nav-status-group">
-          <div className={`status-pill ${healthStatus?.status === 'ok' ? 'online' : 'offline'}`}>
-            <span className="dot"></span>
-            Backend: {healthStatus?.status === 'ok' ? 'Online (Port 5000)' : 'Offline'}
-          </div>
-          <div className="status-pill test-mode">
-            <span className="dot blue"></span>
-            Razorpay: TEST MODE Active
-          </div>
-        </div>
-      </header>
-
       <main className="main-layout">
-        {/* KPI Summary Banner */}
+        {connectionError && (
+          <div className="connection-warning-banner">
+            ⚠️ Connection Warning: {connectionError} — Retrying in background...
+          </div>
+        )}
+
+        {/* 1. Executive Metric KPI Cards */}
         <section className="metrics-section">
           <MetricsOverview metrics={metrics} loading={loadingMetrics} />
         </section>
 
-        {/* Global Navigation Tabs */}
+        {/* 2. Visual Centerpieces: Autonomous Recovery Funnel & Intelligence Analytics */}
+        <section className="centerpiece-grid">
+          <RecoveryFunnel cases={cases} metrics={metrics} />
+          <AiIntelligenceAnalytics cases={cases} />
+        </section>
+
+        {/* 3. Main Navigation Tabs */}
         <div className="tabs-bar">
           <button
             className={`tab-btn ${activeTab === 'cases' ? 'active' : ''}`}
             onClick={() => handleTabSwitch('cases')}
           >
-            📋 Failed Recovery Cases ({cases.length})
+            📋 Recovery Cases ({cases.length})
           </button>
           <button
             className={`tab-btn ${activeTab === 'approval' ? 'active' : ''}`}
@@ -183,24 +192,18 @@ function App() {
             className={`tab-btn ${activeTab === 'audit' ? 'active' : ''}`}
             onClick={() => handleTabSwitch('audit')}
           >
-            📜 Security &amp; Audit Trail
+            📜 Live Audit Stream
           </button>
         </div>
 
-        {error && (
-          <div className="error-banner">
-            ⚠️ {error} — <button onClick={loadCases}>Retry Loading</button>
-          </div>
-        )}
-
-        {/* Main Content Area */}
+        {/* 4. Tab Content Panels */}
         {activeTab === 'cases' && (
           <RecoveryCasesTable
             cases={cases}
             loading={loadingCases}
             filters={filters}
             onFilterChange={handleFilterChange}
-            onSelectCase={(c) => setSelectedCaseId(c.id)}
+            onSelectCase={handleSelectCase}
             onRefresh={handleRefreshAll}
           />
         )}
@@ -217,7 +220,7 @@ function App() {
         )}
 
         {activeTab === 'audit' && (
-          <AuditLogStream
+          <LiveActivityFeed
             logs={auditLogs}
             loading={loadingAudit}
             onRefresh={loadAuditLogs}
@@ -225,7 +228,7 @@ function App() {
         )}
       </main>
 
-      {/* Case Intelligence Inspector Modal */}
+      {/* Modals */}
       {selectedCaseId && (
         <CaseDetailModal
           caseId={selectedCaseId}
@@ -234,7 +237,6 @@ function App() {
         />
       )}
 
-      {/* Live Failure Simulator Modal */}
       {showSimulatorModal && (
         <LiveSimulatorModal
           onClose={() => setShowSimulatorModal(false)}
@@ -244,7 +246,7 @@ function App() {
 
       {/* Footer */}
       <footer className="footer">
-        RazorRecover AI — Built for Razorpay AI Buildathon | Autonomous Revenue Recovery Track
+        RazorRecover AI — Executive Autonomous Revenue Recovery Engine for Razorpay
       </footer>
     </div>
   );

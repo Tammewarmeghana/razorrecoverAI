@@ -1,83 +1,68 @@
 import React from 'react';
 
 export default function RecoveryCasesTable({
-  cases,
+  cases = [],
   loading,
   filters,
   onFilterChange,
   onSelectCase,
   onRefresh
 }) {
-  const getRiskBadgeClass = (level) => {
-    switch (level?.toUpperCase()) {
-      case 'CRITICAL': return 'badge-risk-critical';
-      case 'HIGH': return 'badge-risk-high';
-      case 'MEDIUM': return 'badge-risk-medium';
-      case 'LOW': return 'badge-risk-low';
-      default: return 'badge-risk-default';
-    }
-  };
-
-  const getStatusBadgeClass = (status) => {
-    switch (status?.toUpperCase()) {
-      case 'RECOVERED': return 'badge-status-recovered';
-      case 'RECOVERING': return 'badge-status-recovering';
-      case 'DETECTED': return 'badge-status-detected';
-      default: return 'badge-status-default';
-    }
-  };
-
   return (
-    <div className="cases-section">
-      <div className="table-controls">
-        <div className="search-box">
+    <div className="cases-section-container">
+      {/* Controls Bar Above Table */}
+      <div className="table-controls-bar">
+        <div className="search-input-wrapper">
           <span className="search-icon">🔍</span>
           <input
             type="text"
-            placeholder="Search customer name or case ID..."
+            placeholder="Search customer name, email, or case ID..."
             value={filters.search}
             onChange={(e) => onFilterChange('search', e.target.value)}
+            className="search-control-input"
           />
         </div>
 
-        <div className="filter-group">
+        <div className="filters-control-group">
           <select
             value={filters.status}
             onChange={(e) => onFilterChange('status', e.target.value)}
-            className="select-filter"
+            className="select-filter-control"
           >
             <option value="ALL">All Statuses</option>
-            <option value="DETECTED">DETECTED (New)</option>
-            <option value="RECOVERING">RECOVERING (Active)</option>
-            <option value="RECOVERED">RECOVERED (Success)</option>
+            <option value="DETECTED">DETECTED</option>
+            <option value="RECOVERING">RECOVERING</option>
+            <option value="RECOVERED">RECOVERED</option>
+            <option value="TERMINATED">TERMINATED</option>
           </select>
 
           <select
             value={filters.riskLevel}
             onChange={(e) => onFilterChange('riskLevel', e.target.value)}
-            className="select-filter"
+            className="select-filter-control"
           >
             <option value="ALL">All Risk Levels</option>
-            <option value="CRITICAL">CRITICAL (80+)</option>
-            <option value="HIGH">HIGH (60-79)</option>
-            <option value="MEDIUM">MEDIUM (40-59)</option>
-            <option value="LOW">LOW (&lt; 40)</option>
+            <option value="CRITICAL">CRITICAL</option>
+            <option value="HIGH">HIGH</option>
+            <option value="MEDIUM">MEDIUM</option>
+            <option value="LOW">LOW</option>
           </select>
 
-          <button className="btn-secondary" onClick={onRefresh} disabled={loading}>
-            🔄 {loading ? 'Refreshing...' : 'Refresh'}
+          <button className="btn-refresh-control" onClick={onRefresh} disabled={loading}>
+            🔄 {loading ? 'Loading...' : 'Refresh'}
           </button>
         </div>
       </div>
 
-      <div className="table-container">
-        <table className="cases-table">
+      {/* Main Table */}
+      <div className="table-container-luxury">
+        <table className="cases-table-luxury">
           <thead>
             <tr>
               <th>Customer</th>
               <th>Failure Error</th>
               <th>Amount</th>
-              <th>Risk Level &amp; Score</th>
+              <th>Risk Score &amp; Level</th>
               <th>Status</th>
               <th>Created</th>
               <th>Action</th>
@@ -86,42 +71,51 @@ export default function RecoveryCasesTable({
           <tbody>
             {loading && cases.length === 0 ? (
               <tr>
-                <td colSpan="7" className="text-center py-4">Loading recovery cases...</td>
+                <td colSpan="7" className="py-5 text-center text-muted">
+                  <div className="spinner-emerald mb-2"></div>
+                  Loading active recovery cases...
+                </td>
               </tr>
             ) : cases.length === 0 ? (
               <tr>
-                <td colSpan="7" className="text-center py-4">No matching recovery cases found.</td>
+                <td colSpan="7" className="py-5 text-center text-muted">
+                  No matching recovery cases found.
+                </td>
               </tr>
             ) : (
               cases.map((c) => {
-                const riskLevel = c.risk?.risk_level || 'LOW';
-                const riskScore = c.risk?.risk_score ?? 0;
+                const isRecovered = c.status === 'RECOVERED';
+                const isRecovering = c.status === 'RECOVERING';
+                const riskLevel = c.risk_level || 'LOW';
+                const riskBadgeClass = riskLevel === 'CRITICAL' ? 'badge-risk-critical' :
+                                      riskLevel === 'HIGH' ? 'badge-risk-high' :
+                                      riskLevel === 'MEDIUM' ? 'badge-risk-medium' : 'badge-risk-low';
 
                 return (
-                  <tr key={c.id} className={c.status === 'RECOVERED' ? 'row-recovered' : ''}>
+                  <tr key={c.id} className={isRecovered ? 'row-recovered' : ''}>
                     <td>
                       <div className="customer-cell">
                         <span className="customer-name">{c.customer?.name || 'Valued Customer'}</span>
-                        <span className="customer-sub">{c.customer?.email || 'N/A'}</span>
+                        <span className="customer-sub">{c.customer?.email}</span>
                       </div>
                     </td>
                     <td>
                       <span className="error-reason-code">
-                        {c.failure_details?.error_reason || 'payment_failed'}
+                        {c.payment_failure?.error_reason || 'payment_failed'}
                       </span>
                     </td>
                     <td>
-                      <span className="amount-cell">₹{c.amount_at_risk_rupees}</span>
+                      <span className={`amount-cell ${isRecovered ? 'text-emerald' : ''}`}>
+                        ₹{c.amount_at_risk_rupees}
+                      </span>
                     </td>
                     <td>
-                      <div className="risk-cell">
-                        <span className={`badge ${getRiskBadgeClass(riskLevel)}`}>
-                          {riskLevel} ({riskScore}/100)
-                        </span>
-                      </div>
+                      <span className={`badge ${riskBadgeClass}`}>
+                        {riskLevel} ({c.risk_score || 0}/100)
+                      </span>
                     </td>
                     <td>
-                      <span className={`badge ${getStatusBadgeClass(c.status)}`}>
+                      <span className={`badge ${isRecovered ? 'badge-status-recovered' : isRecovering ? 'badge-status-recovering' : 'badge-status-detected'}`}>
                         {c.status}
                       </span>
                     </td>
@@ -131,7 +125,10 @@ export default function RecoveryCasesTable({
                       </span>
                     </td>
                     <td>
-                      <button className="btn-primary-sm" onClick={() => onSelectCase(c)}>
+                      <button
+                        className="btn-inspect-action"
+                        onClick={() => onSelectCase(c)}
+                      >
                         Inspect Case ➔
                       </button>
                     </td>

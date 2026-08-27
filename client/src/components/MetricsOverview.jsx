@@ -3,60 +3,80 @@ import React from 'react';
 export default function MetricsOverview({ metrics, loading }) {
   if (loading && !metrics) {
     return (
-      <div className="metrics-grid loading-skeleton">
-        <div className="metric-card skeleton"></div>
-        <div className="metric-card skeleton"></div>
-        <div className="metric-card skeleton"></div>
-        <div className="metric-card skeleton"></div>
+      <div className="metrics-executive-grid">
+        {[1, 2, 3, 4].map((n) => (
+          <div className="metric-exec-card skeleton-card" key={n}>
+            <div className="skeleton-line short mb-2"></div>
+            <div className="skeleton-line tall"></div>
+          </div>
+        ))}
       </div>
     );
   }
 
-  const {
-    revenue_at_risk_rupees = '0.00',
-    recovered_revenue_rupees = '0.00',
-    recovery_rate_percent = '0.00',
-    successful_recoveries = 0,
-    failed_transactions = 0,
-    total_transactions = 0
-  } = metrics || {};
+  const recoveredRupees = metrics?.recovered_revenue_rupees || 0;
+  const atRiskRupees = metrics?.revenue_at_risk_rupees || 0;
+  const ratePercent = metrics?.recovery_rate_percent || 0;
+  const totalFailed = metrics?.failed_transactions || 0;
+  const totalProcessed = metrics?.total_transactions || 0;
+  const successfulRecoveries = metrics?.successful_recoveries || 0;
 
   return (
-    <div className="metrics-grid">
-      <div className="metric-card risk">
-        <div className="metric-header">
-          <span className="metric-icon">⚠️</span>
-          <span className="metric-label">Revenue at Risk</span>
+    <div className="metrics-executive-grid">
+      {/* Card 1: Revenue Recovered */}
+      <div className="metric-exec-card card-emerald">
+        <div className="metric-exec-header">
+          <span className="metric-exec-label">REVENUE RECOVERED</span>
+          <span className="metric-exec-icon icon-emerald">💰</span>
         </div>
-        <div className="metric-value">₹{revenue_at_risk_rupees}</div>
-        <div className="metric-subtext">From {failed_transactions} payment failures</div>
+        <div className="metric-exec-value val-emerald">
+          ₹{recoveredRupees.toLocaleString('en-IN')}
+        </div>
+        <div className="metric-exec-subtext">
+          <span>{successfulRecoveries} successful recovery events</span>
+        </div>
       </div>
 
-      <div className="metric-card recovered">
-        <div className="metric-header">
-          <span className="metric-icon">✅</span>
-          <span className="metric-label">Recovered Revenue</span>
+      {/* Card 2: Recovery Rate */}
+      <div className="metric-exec-card card-violet">
+        <div className="metric-exec-header">
+          <span className="metric-exec-label">RECOVERY RATE</span>
+          <span className="metric-exec-icon icon-violet">📈</span>
         </div>
-        <div className="metric-value highlight">₹{recovered_revenue_rupees}</div>
-        <div className="metric-subtext">{successful_recoveries} successful recoveries</div>
+        <div className="metric-exec-value val-violet">
+          {ratePercent}%
+        </div>
+        <div className="metric-exec-subtext">
+          <span>Autonomous AI conversion efficiency</span>
+        </div>
       </div>
 
-      <div className="metric-card rate">
-        <div className="metric-header">
-          <span className="metric-icon">📈</span>
-          <span className="metric-label">Recovery Success Rate</span>
+      {/* Card 3: Failed Payment Cases */}
+      <div className="metric-exec-card card-cyan">
+        <div className="metric-exec-header">
+          <span className="metric-exec-label">FAILED RECOVERY CASES</span>
+          <span className="metric-exec-icon icon-cyan">📋</span>
         </div>
-        <div className="metric-value">{recovery_rate_percent}%</div>
-        <div className="metric-subtext">Autonomous recovery efficiency</div>
+        <div className="metric-exec-value val-cyan">
+          {totalFailed}
+        </div>
+        <div className="metric-exec-subtext">
+          <span>Ingested across {totalProcessed} transactions</span>
+        </div>
       </div>
 
-      <div className="metric-card total">
-        <div className="metric-header">
-          <span className="metric-icon">💳</span>
-          <span className="metric-label">Total Transactions</span>
+      {/* Card 4: Revenue At Risk */}
+      <div className="metric-exec-card card-amber">
+        <div className="metric-exec-header">
+          <span className="metric-exec-label">REVENUE AT RISK</span>
+          <span className="metric-exec-icon icon-amber">⚠️</span>
         </div>
-        <div className="metric-value">{total_transactions}</div>
-        <div className="metric-subtext">Processed by Razorpay</div>
+        <div className="metric-exec-value val-amber">
+          ₹{atRiskRupees.toLocaleString('en-IN')}
+        </div>
+        <div className="metric-exec-subtext">
+          <span>Targeted for AI diagnosis &amp; recovery</span>
+        </div>
       </div>
     </div>
   );

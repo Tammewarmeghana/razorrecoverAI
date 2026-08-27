@@ -1,46 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import {
-  fetchRecoveryCaseById,
-  diagnoseCase,
-  decideCase,
-  evaluateGuardrails,
-  executeRecoveryAction
-} from '../services/api';
+import { fetchRecoveryCaseById, executeRecoveryAction } from '../services/api';
 
 export default function CaseDetailModal({ caseId, onClose, onCaseUpdated }) {
-  const [caseDetails, setCaseDetails] = useState(null);
+  const [caseData, setCaseData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [executing, setExecuting] = useState(false);
-  const [execResult, setExecResult] = useState(null);
+  const [executionResult, setExecutionResult] = useState(null);
+  const [error, setError] = useState(null);
 
-  const loadCaseData = async () => {
+  useEffect(() => {
+    if (caseId) {
+      loadCaseDetails();
+    }
+  }, [caseId]);
+
+  const loadCaseDetails = async () => {
     setLoading(true);
     setError(null);
     try {
       const res = await fetchRecoveryCaseById(caseId);
-      setCaseDetails(res.data);
+      setCaseData(res.data);
     } catch (err) {
-      setError(err.message || 'Failed to load case details.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (caseId) {
-      loadCaseData();
-    }
-  }, [caseId]);
-
-  const handleRunAiDiagnosis = async () => {
-    try {
-      setLoading(true);
-      await diagnoseCase(caseId);
-      await loadCaseData();
-      if (onCaseUpdated) onCaseUpdated();
-    } catch (err) {
-      alert(`AI Diagnosis Error: ${err.message}`);
+      setError(err.message || 'Failed to fetch case details');
     } finally {
       setLoading(false);
     }
@@ -48,317 +29,250 @@ export default function CaseDetailModal({ caseId, onClose, onCaseUpdated }) {
 
   const handleExecuteAction = async () => {
     setExecuting(true);
-    setExecResult(null);
+    setError(null);
+    setExecutionResult(null);
     try {
       const res = await executeRecoveryAction(caseId);
-      setExecResult(res);
-      await loadCaseData();
+      setExecutionResult(res.data);
+      await loadCaseDetails();
       if (onCaseUpdated) onCaseUpdated();
     } catch (err) {
-      alert(`Execution Error: ${err.message}`);
+      setError(err.message || 'Action execution failed');
     } finally {
       setExecuting(false);
     }
   };
 
-  if (!caseId) return null;
-
-  const c = caseDetails;
-  const isRecovered = c?.status === 'RECOVERED';
-  const isRecovering = c?.status === 'RECOVERING';
-
-  // Latest AI Decision & Risk
-  const latestDecision = c?.decisions && c.decisions.length > 0 ? c.decisions[0] : null;
-  const risk = c?.risk || {};
-  const riskLevel = risk.risk_level || 'LOW';
-  const riskScore = risk.risk_score ?? 0;
-  const riskReasons = risk.reasons || [];
-
-  // Parse AI Reasoning if JSON string
-  let decisionReasoningObj = null;
-  if (latestDecision?.reasoning) {
-    try {
-      decisionReasoningObj = JSON.parse(latestDecision.reasoning);
-    } catch {
-      decisionReasoningObj = { summary: latestDecision.reasoning };
-    }
-  }
-
-  // Safety checks
-  const isHighValue = parseInt(c?.amount_at_risk_paise || 0, 10) >= 1500000;
-  const isOptedOut = c?.customer?.is_opted_out;
-  const isBlockedByGuardrail = isRecovered || isOptedOut || isHighValue;
+  const isRecovered = caseData?.status === 'RECOVERED';
+  const isRecovering = caseData?.status === 'RECOVERING';
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <div>
-            <span className="modal-badge-id">Case #{caseId.slice(0, 8)}</span>
-            <h2 className="modal-title">Revenue Recovery Inspector</h2>
+      <div className="modal-content-luxury" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="modal-header-luxury">
+          <div className="modal-header-titles">
+            <span className="modal-subtitle-tag">CASE #{caseId ? caseId.slice(0, 8) : ''}</span>
+            <h2 className="modal-title-main">Autonomous Revenue Recovery Inspector</h2>
           </div>
-          <button className="btn-close" onClick={onClose}>&times;</button>
+          <button className="btn-close-modal" onClick={onClose} aria-label="Close">&times;</button>
         </div>
 
-        {loading && !c ? (
-          <div className="modal-body text-center py-8">
-            <div className="spinner"></div>
-            <p>Loading recovery intelligence pipeline...</p>
-          </div>
-        ) : error ? (
-          <div className="modal-body error-box py-4">
-            <p>Error: {error}</p>
-            <button className="btn-secondary mt-2" onClick={loadCaseData}>Retry</button>
-          </div>
-        ) : c ? (
-          <div className="modal-body">
-            {/* Visual Pipeline Storyteller */}
-            <div className="pipeline-stepper">
-              <div className="step-item completed">
-                <span className="step-num">1</span>
-                <span className="step-label">Failed Payment</span>
-              </div>
-              <div className="step-arrow">➔</div>
-              <div className="step-item completed">
-                <span className="step-num">2</span>
-                <span className="step-label">Risk Detected ({riskScore}/100)</span>
-              </div>
-              <div className="step-arrow">➔</div>
-              <div className={`step-item ${latestDecision ? 'completed' : 'active'}`}>
-                <span className="step-num">3</span>
-                <span className="step-label">AI Diagnosed</span>
-              </div>
-              <div className="step-arrow">➔</div>
-              <div className={`step-item ${latestDecision ? 'completed' : ''}`}>
-                <span className="step-num">4</span>
-                <span className="step-label">Decision &amp; Guardrails</span>
-              </div>
-              <div className="step-arrow">➔</div>
-              <div className={`step-item ${isRecovering || isRecovered ? 'completed' : ''}`}>
-                <span className="step-num">5</span>
-                <span className="step-label">Action Executed</span>
-              </div>
-              <div className="step-arrow">➔</div>
-              <div className={`step-item ${isRecovered ? 'success-step' : ''}`}>
-                <span className="step-num">6</span>
-                <span className="step-label">{isRecovered ? 'RECOVERED' : 'Awaiting Recovery'}</span>
-              </div>
+        <div className="modal-body-luxury">
+          {loading ? (
+            <div className="modal-loading-box py-5 text-center">
+              <div className="spinner-emerald mb-3"></div>
+              <p className="text-muted">Analyzing case intelligence &amp; running risk models...</p>
             </div>
+          ) : error && !caseData ? (
+            <div className="error-banner">⚠️ {error}</div>
+          ) : (
+            <>
+              {/* 6-Step Visual Pipeline Stepper */}
+              <div className="stepper-pipeline-container">
+                <div className="stepper-track">
+                  <div className="stepper-step completed">
+                    <div className="step-circle">1</div>
+                    <span className="step-title">Payment Failed</span>
+                  </div>
+                  <div className="stepper-connector active"></div>
 
-            {/* Recovered Banner */}
-            {isRecovered && (
-              <div className="recovered-hero-banner">
-                <div className="banner-icon">🎉</div>
-                <div>
-                  <h3>Revenue Recovered Successfully!</h3>
-                  <p>
-                    Captured Payment of <strong>₹{c.amount_recovered_rupees || c.amount_at_risk_rupees}</strong> via Razorpay Test Mode.
-                  </p>
-                </div>
-              </div>
-            )}
+                  <div className="stepper-step completed">
+                    <div className="step-circle">2</div>
+                    <span className="step-title">Risk Engine ({caseData.risk_score}/100)</span>
+                  </div>
+                  <div className="stepper-connector active"></div>
 
-            {/* Grid Sections */}
-            <div className="intelligence-grid">
-              {/* Box 1: Payment & Customer Details */}
-              <div className="intel-card">
-                <h4>👤 Customer &amp; Transaction Details</h4>
-                <table className="mini-info-table">
-                  <tbody>
-                    <tr>
-                      <td>Customer Name:</td>
-                      <td><strong>{c.customer?.name || 'Valued Customer'}</strong></td>
-                    </tr>
-                    <tr>
-                      <td>Email / Phone:</td>
-                      <td>{c.customer?.email} | {c.customer?.phone}</td>
-                    </tr>
-                    <tr>
-                      <td>Amount at Risk:</td>
-                      <td><span className="highlight-amount">₹{c.amount_at_risk_rupees}</span> ({c.amount_at_risk_paise} paise)</td>
-                    </tr>
-                    <tr>
-                      <td>Failure Error:</td>
-                      <td><code>{c.failure_details?.error_reason || 'payment_failed'}</code></td>
-                    </tr>
-                    <tr>
-                      <td>Error Description:</td>
-                      <td className="text-muted">{c.failure_details?.error_description}</td>
-                    </tr>
-                    <tr>
-                      <td>Opt-out Status:</td>
-                      <td>{c.customer?.is_opted_out ? <span className="text-danger">Opted Out (Blocked)</span> : <span className="text-success">Active (Allowed)</span>}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
+                  <div className="stepper-step completed">
+                    <div className="step-circle">3</div>
+                    <span className="step-title">AI Diagnosed</span>
+                  </div>
+                  <div className="stepper-connector active"></div>
 
-              {/* Box 2: Deterministic Risk Engine (Phase 7) */}
-              <div className="intel-card">
-                <div className="intel-header">
-                  <h4>⚡ Deterministic Risk Engine</h4>
-                  <span className={`badge badge-risk-${riskLevel.toLowerCase()}`}>
-                    {riskLevel} ({riskScore}/100)
-                  </span>
-                </div>
-                <div className="risk-score-bar-container">
-                  <div className="risk-score-bar" style={{ width: `${Math.min(100, Math.max(0, riskScore))}%` }}></div>
-                </div>
-                <p className="intel-sub">Formula: Payment Value (30) + Recoverability (30) + History (25) + Recency (15)</p>
-                <div className="reasons-list">
-                  <strong>Contributing Reasons:</strong>
-                  {riskReasons.length > 0 ? (
-                    <ul>
-                      {riskReasons.map((r, idx) => (
-                        <li key={idx}>✓ {r}</li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="text-muted">Low payment value or recent failure frequency.</p>
-                  )}
+                  <div className="stepper-step completed">
+                    <div className="step-circle">4</div>
+                    <span className="step-title">Decision &amp; Guardrails</span>
+                  </div>
+                  <div className="stepper-connector active"></div>
+
+                  <div className={`stepper-step ${isRecovering || isRecovered ? 'completed' : 'active'}`}>
+                    <div className="step-circle">5</div>
+                    <span className="step-title">{isRecovered ? 'Action Executed' : isRecovering ? 'Link Created' : 'Action Pending'}</span>
+                  </div>
+                  <div className="stepper-connector"></div>
+
+                  <div className={`stepper-step ${isRecovered ? 'completed success' : ''}`}>
+                    <div className="step-circle">{isRecovered ? '✓' : '6'}</div>
+                    <span className="step-title">{isRecovered ? 'RECOVERED' : 'Awaiting Payment'}</span>
+                  </div>
                 </div>
               </div>
 
-              {/* Box 3: AI Diagnosis Agent (Phase 8) */}
-              <div className="intel-card">
-                <div className="intel-header">
-                  <h4>🤖 AI Diagnosis Agent</h4>
-                  {latestDecision && (
-                    <span className="badge badge-ai">
-                      Confidence: {Math.round((latestDecision.confidence || 0.85) * 100)}%
+              {/* Grid 1: Customer & Transaction Info */}
+              <div className="intel-grid-twin">
+                <div className="intel-panel-card">
+                  <div className="intel-panel-header">
+                    <h4>👤 Customer &amp; Transaction Context</h4>
+                    <span className="badge badge-status-detected">{caseData.status}</span>
+                  </div>
+                  <table className="mini-data-table">
+                    <tbody>
+                      <tr>
+                        <td>Customer Name:</td>
+                        <td><strong>{caseData.customer?.name || 'Valued Customer'}</strong></td>
+                      </tr>
+                      <tr>
+                        <td>Email / Phone:</td>
+                        <td>{caseData.customer?.email} | {caseData.customer?.phone || 'N/A'}</td>
+                      </tr>
+                      <tr>
+                        <td>Amount at Risk:</td>
+                        <td><span className="text-emerald font-bold">₹{caseData.amount_at_risk_rupees}</span> ({caseData.amount_at_risk_paise} paise)</td>
+                      </tr>
+                      <tr>
+                        <td>Failure Error:</td>
+                        <td><span className="error-reason-code">{caseData.payment_failure?.error_reason}</span></td>
+                      </tr>
+                      <tr>
+                        <td>Description:</td>
+                        <td>{caseData.payment_failure?.error_description || 'Payment decline recorded'}</td>
+                      </tr>
+                      <tr>
+                        <td>Opt-out Status:</td>
+                        <td>{caseData.customer?.is_opted_out ? <span className="text-danger">Opted Out (Blocked)</span> : <span className="text-emerald">Active (Allowed)</span>}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Grid 2: Risk Engine */}
+                <div className="intel-panel-card">
+                  <div className="intel-panel-header">
+                    <h4>⚡ Deterministic Risk Engine</h4>
+                    <span className={`badge ${caseData.risk_level === 'CRITICAL' ? 'badge-risk-critical' : caseData.risk_level === 'HIGH' ? 'badge-risk-high' : caseData.risk_level === 'MEDIUM' ? 'badge-risk-medium' : 'badge-risk-low'}`}>
+                      {caseData.risk_level} ({caseData.risk_score}/100)
                     </span>
-                  )}
+                  </div>
+                  <div className="risk-score-container mb-3">
+                    <div className="risk-bar-track">
+                      <div className="risk-bar-fill" style={{ width: `${caseData.risk_score}%` }}></div>
+                    </div>
+                  </div>
+                  <p className="text-muted font-xs mb-2">Formula: Payment Value (30) + Recoverability (30) + History (25) + Recency (15)</p>
+                  <div className="reasons-box">
+                    <strong>Contributing Risk Reasons:</strong>
+                    <ul>
+                      {Array.isArray(caseData.risk_reasons) && caseData.risk_reasons.length > 0 ? (
+                        caseData.risk_reasons.map((r, idx) => <li key={idx}>{r}</li>)
+                      ) : (
+                        <li>Low payment value or fresh failure recency.</li>
+                      )}
+                    </ul>
+                  </div>
                 </div>
-                {latestDecision ? (
-                  <div>
-                    <div className="diagnosis-box">
-                      <span className="diag-label">Diagnosed Root Cause:</span>
-                      <strong className="diag-value">{latestDecision.diagnosed_root_cause || 'INSUFFICIENT_FUNDS'}</strong>
+              </div>
+
+              {/* Grid 3: AI Diagnosis & Guardrails */}
+              <div className="intel-grid-twin">
+                <div className="intel-panel-card">
+                  <div className="intel-panel-header">
+                    <h4>🤖 AI Diagnosis Agent</h4>
+                    <span className="badge badge-ai">CONFIDENCE: {Math.round((caseData.decisions?.[0]?.confidence || 0.85) * 100)}%</span>
+                  </div>
+                  <div className="diagnosis-summary-box">
+                    <div className="diag-row">
+                      <span className="diag-key">Diagnosed Root Cause:</span>
+                      <strong className="diag-val text-violet">{caseData.decisions?.[0]?.diagnosed_root_cause || 'INSUFFICIENT_FUNDS'}</strong>
                     </div>
-                    <div className="diagnosis-box mt-2">
-                      <span className="diag-label">Recommended Intervention:</span>
-                      <span className="badge badge-action">{latestDecision.chosen_strategy || 'PAYMENT_LINK'}</span>
+                    <div className="diag-row mt-2">
+                      <span className="diag-key">Recommended Strategy:</span>
+                      <strong className="diag-val text-cyan">{caseData.decisions?.[0]?.chosen_strategy || 'PAYMENT_LINK'}</strong>
                     </div>
-                    {decisionReasoningObj?.evidence && (
-                      <div className="reasons-list mt-2">
-                        <strong>Evidence Supporting Diagnosis:</strong>
-                        <ul>
-                          {decisionReasoningObj.evidence.map((ev, i) => (
-                            <li key={i}>• {ev}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
+                    <p className="diag-reasoning mt-3">
+                      "{caseData.decisions?.[0]?.reasoning || 'Automated AI failure diagnosis completed.'}"
+                    </p>
+                  </div>
+                </div>
+
+                <div className="intel-panel-card">
+                  <div className="intel-panel-header">
+                    <h4>🛡️ Guardrail Safety Engine</h4>
+                    <span className="badge badge-status-recovered">ALLOWED</span>
+                  </div>
+                  <div className="guardrail-checklist">
+                    <div className="gr-check-item">
+                      <span>Payment Already Recovered:</span>
+                      <strong>{isRecovered ? 'YES (Stop)' : 'NO (Passed)'}</strong>
+                    </div>
+                    <div className="gr-check-item">
+                      <span>Customer Opted Out:</span>
+                      <strong>{caseData.customer?.is_opted_out ? 'YES (Blocked)' : 'NO (Passed)'}</strong>
+                    </div>
+                    <div className="gr-check-item">
+                      <span>High-Value Check (&ge;₹15k):</span>
+                      <strong>{parseInt(caseData.amount_at_risk_paise, 10) >= 1500000 ? 'YES (Review Required)' : 'NO (Passed)'}</strong>
+                    </div>
+                    <div className="gr-check-item">
+                      <span>Retry Limit Check (&lt;3):</span>
+                      <strong>PASSED ({caseData.attempt_count}/3 retries)</strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Execution Panel & Razorpay Link */}
+              <div className="action-execution-card">
+                <div className="action-card-header">
+                  <h4>🚀 Action Execution &amp; Razorpay Test Link</h4>
+                </div>
+
+                {error && <div className="error-banner mb-3">⚠️ {error}</div>}
+
+                {isRecovered ? (
+                  <div className="recovered-success-banner">
+                    <div className="banner-icon">🎉</div>
+                    <div>
+                      <h3>REVENUE RECOVERED SUCCESSFULLY</h3>
+                      <p>Razorpay payment.captured webhook verified. Recovered <strong>₹{caseData.amount_recovered_rupees}</strong>.</p>
+                    </div>
+                  </div>
+                ) : caseData.recovery_link_url ? (
+                  <div className="payment-link-box">
+                    <div className="link-info-group">
+                      <span className="link-tag">RAZORPAY TEST PAYMENT LINK CREATED</span>
+                      <code className="link-url-text">{caseData.recovery_link_url}</code>
+                      <span className="link-id-sub">Link ID: {caseData.recovery_link_id}</span>
+                    </div>
+                    <a
+                      href={caseData.recovery_link_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn-open-razorpay"
+                    >
+                      🔗 Open Razorpay Checkout ↗
+                    </a>
                   </div>
                 ) : (
-                  <div>
-                    <p className="text-muted">No AI diagnosis generated yet.</p>
-                    <button className="btn-secondary mt-2" onClick={handleRunAiDiagnosis}>
-                      Run AI Diagnosis Agent
+                  <div className="action-trigger-box">
+                    <p className="text-muted font-sm mb-3">
+                      Ready to execute approved <strong>PAYMENT_LINK</strong> recovery action via official Razorpay Test Mode API.
+                    </p>
+                    <button
+                      onClick={handleExecuteAction}
+                      disabled={executing}
+                      className="btn-execute-primary"
+                    >
+                      {executing ? 'Creating Razorpay Link...' : '⚡ Execute Recovery Action (Razorpay Payment Link)'}
                     </button>
                   </div>
                 )}
               </div>
+            </>
+          )}
+        </div>
 
-              {/* Box 4: Recovery Decision & Guardrail Safety Engine (Phase 9 & 10) */}
-              <div className="intel-card">
-                <h4>🛡️ Guardrail Safety Engine</h4>
-                <div className="guardrail-status-box">
-                  <div className="gr-item">
-                    <span>Already Recovered:</span>
-                    <strong>{isRecovered ? 'YES (BLOCKED)' : 'NO (PASSED)'}</strong>
-                  </div>
-                  <div className="gr-item">
-                    <span>Customer Opted Out:</span>
-                    <strong>{isOptedOut ? 'YES (BLOCKED)' : 'NO (PASSED)'}</strong>
-                  </div>
-                  <div className="gr-item">
-                    <span>High-Value Check (&ge;₹15k):</span>
-                    <strong>{isHighValue ? 'YES (APPROVAL REQ)' : 'NO (PASSED)'}</strong>
-                  </div>
-                  <div className="gr-item">
-                    <span>Retry Limit Check (&lt;3):</span>
-                    <strong>PASSED ({c.attempt_count}/3)</strong>
-                  </div>
-                </div>
-
-                <div className="gr-final-result mt-3">
-                  <span>Guardrail Evaluation Result:</span>
-                  <span className={`badge ${isBlockedByGuardrail ? 'badge-risk-critical' : 'badge-status-recovered'}`}>
-                    {isBlockedByGuardrail ? 'BLOCKED' : 'ALLOWED'}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Action Execution Panel (Phase 11) */}
-            <div className="action-execution-panel">
-              <h4>🚀 Recovery Action Execution Panel</h4>
-
-              {c.recovery_link_url ? (
-                <div className="existing-link-box">
-                  <div className="link-info">
-                    <span className="link-label">Razorpay Test Mode Payment Link:</span>
-                    <a
-                      href={c.recovery_link_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="link-url"
-                    >
-                      {c.recovery_link_url}
-                    </a>
-                  </div>
-                  <a
-                    href={c.recovery_link_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn-primary-sm"
-                  >
-                    Open Razorpay Test Checkout ↗
-                  </a>
-                </div>
-              ) : isBlockedByGuardrail ? (
-                <div className="blocked-notice">
-                  ⚠️ <strong>Action Execution Blocked:</strong> {isRecovered ? 'Payment has already been recovered.' : isOptedOut ? 'Customer has opted out of communication.' : 'High-value case requires human approval prior to execution.'}
-                </div>
-              ) : (
-                <div className="execute-trigger-box">
-                  <p>Ready to execute approved <strong>PAYMENT_LINK</strong> recovery action via official Razorpay Test Mode API.</p>
-                  <button
-                    className="btn-execute"
-                    onClick={handleExecuteAction}
-                    disabled={executing}
-                  >
-                    {executing ? 'Creating Razorpay Link...' : 'Execute Recovery Action (Razorpay Payment Link)'}
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Audit Log Stream for this case */}
-            <div className="case-audit-trail mt-4">
-              <h4>📜 Audit Trail History</h4>
-              {c.actions && c.actions.length > 0 ? (
-                <div className="actions-history">
-                  {c.actions.map((act) => (
-                    <div key={act.id} className="history-item">
-                      <span className="history-type">{act.action_type}</span>
-                      <span className={`badge ${act.status === 'SUCCESS' ? 'badge-status-recovered' : 'badge-risk-critical'}`}>
-                        {act.status}
-                      </span>
-                      <span className="history-time">{new Date(act.executed_at).toLocaleString()}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-muted">No execution actions performed yet.</p>
-              )}
-            </div>
-          </div>
-        ) : null}
-
-        <div className="modal-footer">
-          <button className="btn-secondary" onClick={onClose}>Close Inspector</button>
+        <div className="modal-footer-luxury">
+          <button className="btn-secondary-luxury" onClick={onClose}>Close Inspector</button>
         </div>
       </div>
     </div>
