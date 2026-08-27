@@ -7,9 +7,8 @@ export default function ExecutiveHeader({
   pendingApprovalsCount,
   onOpenApprovals,
   onRefresh,
-  activeTab,
-  onTabSwitch,
-  casesCount
+  theme,
+  onToggleTheme
 }) {
   const isOnline = healthStatus?.status === 'ok';
 
@@ -30,12 +29,12 @@ export default function ExecutiveHeader({
         <div className="header-status-indicators">
           <div className={`status-pill ${isOnline ? 'status-emerald' : 'status-danger'}`}>
             <span className={`pulse-dot ${isOnline ? 'dot-emerald' : 'dot-danger'}`}></span>
-            {isOnline ? '● Operational' : '● Offline'}
+            {isOnline ? 'SYSTEM OPERATIONAL' : 'SYSTEM OFFLINE'}
           </div>
 
-          <div className="status-pill status-blue">
-            <span className="dot-blue"></span>
-            Razorpay: TEST MODE · Connected
+          <div className="status-pill status-cyan">
+            <span className="dot-cyan"></span>
+            Razorpay: TEST MODE
           </div>
 
           {lastUpdatedTime && (
@@ -46,6 +45,14 @@ export default function ExecutiveHeader({
         </div>
 
         <div className="header-buttons">
+          <button
+            className="btn-theme-toggle"
+            onClick={onToggleTheme}
+            title="Toggle Dark / Light Theme"
+          >
+            {theme === 'dark' ? '🌙 Dark Mode' : '☀️ Light Mode'}
+          </button>
+
           <button className="btn-sim-trigger" onClick={onOpenSimulator}>
             ⚡ Run Failure Simulator
           </button>
@@ -57,7 +64,7 @@ export default function ExecutiveHeader({
             </button>
           )}
 
-          <button className="btn-icon-refresh" onClick={onRefresh} title="Refresh Data">
+          <button className="btn-icon-refresh" onClick={onRefresh} title="Refresh All Data">
             🔄
           </button>
         </div>

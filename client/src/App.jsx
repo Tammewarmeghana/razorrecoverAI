@@ -13,7 +13,8 @@ import PolicyBenchmarkTab from './components/PolicyBenchmarkTab';
 import './App.css';
 
 function App() {
-  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'cases' | 'approval' | 'policy' | 'audit'
+  const [activeTab, setActiveTab] = useState('cases'); // 'cases' | 'approval' | 'policy' | 'audit'
+  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
   const [healthStatus, setHealthStatus] = useState(null);
   const [lastUpdatedTime, setLastUpdatedTime] = useState(null);
   
@@ -41,13 +42,19 @@ function App() {
 
   const initialLoadedRef = useRef(false);
 
-  // Active Polling Loop (5 Seconds for Real-Time Sync)
+  // Sync theme attribute to document element
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  // Load Health & Data on Mount + Polling Loop (10s)
   useEffect(() => {
     loadAllData(true);
 
     const intervalId = setInterval(() => {
       loadAllData(false);
-    }, 5000);
+    }, 10000);
 
     return () => clearInterval(intervalId);
   }, [filters.status, filters.riskLevel]);
@@ -59,7 +66,7 @@ function App() {
     }
 
     try {
-      const [hRes, mRes, cRes, aRes] = await Promise.all([
+      const [hRes, mRes, cRes] = await Promise.all([
         checkHealth().catch(err => ({ status: 'offline', error: err.message })),
         fetchMetrics().catch(err => null),
         fetchRecoveryCases({
@@ -67,8 +74,7 @@ function App() {
           riskLevel: filters.riskLevel,
           search: filters.search,
           limit: 100
-        }).catch(err => null),
-        fetchAuditLogs({ limit: 50 }).catch(err => null)
+        }).catch(err => null)
       ]);
 
       setHealthStatus(hRes);
@@ -82,10 +88,6 @@ function App() {
         setConnectionError(null);
       } else if (!mRes) {
         setConnectionError('Backend API server unreachable');
-      }
-
-      if (aRes && aRes.data) {
-        setAuditLogs(aRes.data);
       }
 
       setLastUpdatedTime(new Date());
@@ -121,6 +123,10 @@ function App() {
     }
   };
 
+  const handleToggleTheme = () => {
+    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+  };
+
   const handleOpenSimulator = () => {
     setSelectedCaseId(null);
     setShowSimulatorModal(true);
@@ -143,8 +149,8 @@ function App() {
   ).length;
 
   return (
-    <div className="app-container fintech-app">
-      {/* Executive Light Header */}
+    <div className="app-container executive-app">
+      {/* Executive Top Header */}
       <ExecutiveHeader
         healthStatus={healthStatus}
         lastUpdatedTime={lastUpdatedTime}
@@ -152,31 +158,30 @@ function App() {
         pendingApprovalsCount={pendingApprovalsCount}
         onOpenApprovals={() => setActiveTab('approval')}
         onRefresh={handleRefreshAll}
-        activeTab={activeTab}
-        onTabSwitch={handleTabSwitch}
-        casesCount={cases.length}
+        theme={theme}
+        onToggleTheme={handleToggleTheme}
       />
 
       <main className="main-layout">
         {connectionError && (
-          <div className="status-pill status-danger">
+          <div className="connection-warning-banner">
             ⚠️ Connection Warning: {connectionError} — Retrying in background...
           </div>
         )}
 
-        {/* Executive Metric KPI Cards */}
+        {/* 1. Executive Metric KPI Cards */}
         <section className="metrics-section">
           <MetricsOverview metrics={metrics} loading={loadingMetrics} />
         </section>
 
-        {/* Primary Navigation Tabs */}
+        {/* 2. Visual Centerpieces: Autonomous Recovery Funnel & Intelligence Analytics */}
+        <section className="centerpiece-grid">
+          <RecoveryFunnel cases={cases} metrics={metrics} />
+          <AiIntelligenceAnalytics cases={cases} />
+        </section>
+
+        {/* 3. Main Navigation Tabs */}
         <div className="tabs-bar">
-          <button
-            className={`tab-btn ${activeTab === 'overview' ? 'active' : ''}`}
-            onClick={() => handleTabSwitch('overview')}
-          >
-            📊 Overview Analytics
-          </button>
           <button
             className={`tab-btn ${activeTab === 'cases' ? 'active' : ''}`}
             onClick={() => handleTabSwitch('cases')}
@@ -193,27 +198,17 @@ function App() {
             className={`tab-btn ${activeTab === 'policy' ? 'active' : ''}`}
             onClick={() => handleTabSwitch('policy')}
           >
-            ⚙️ Policies &amp; Benchmarks
+            ⚙️ Policy &amp; Benchmarks
           </button>
           <button
             className={`tab-btn ${activeTab === 'audit' ? 'active' : ''}`}
             onClick={() => handleTabSwitch('audit')}
           >
-            📜 Audit Activity Stream
+            📜 Live Audit Stream
           </button>
         </div>
 
-        {/* Tab Content Panels */}
-        {activeTab === 'overview' && (
-          <>
-            <section className="centerpiece-grid">
-              <RecoveryFunnel cases={cases} metrics={metrics} />
-              <AiIntelligenceAnalytics cases={cases} />
-            </section>
-            <LiveActivityFeed logs={auditLogs} loading={loadingAudit} onRefresh={loadAuditLogs} />
-          </>
-        )}
-
+        {/* 4. Tab Content Panels */}
         {activeTab === 'cases' && (
           <RecoveryCasesTable
             cases={cases}
