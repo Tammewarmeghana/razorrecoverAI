@@ -13,7 +13,7 @@ import PolicyBenchmarkTab from './components/PolicyBenchmarkTab';
 import './App.css';
 
 function App() {
-  const [activeTab, setActiveTab] = useState('cases'); // 'cases' | 'approval' | 'policy' | 'audit'
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'cases' | 'approval' | 'policy' | 'audit'
   const [healthStatus, setHealthStatus] = useState(null);
   const [lastUpdatedTime, setLastUpdatedTime] = useState(null);
   
@@ -39,16 +39,15 @@ function App() {
     search: ''
   });
 
-  // Track initial load vs polling refresh
   const initialLoadedRef = useRef(false);
 
-  // Load Health & Data on Mount + Polling Loop (10s)
+  // Active Polling Loop (5 Seconds for Real-Time Sync)
   useEffect(() => {
     loadAllData(true);
 
     const intervalId = setInterval(() => {
       loadAllData(false);
-    }, 10000);
+    }, 5000);
 
     return () => clearInterval(intervalId);
   }, [filters.status, filters.riskLevel]);
@@ -60,7 +59,7 @@ function App() {
     }
 
     try {
-      const [hRes, mRes, cRes] = await Promise.all([
+      const [hRes, mRes, cRes, aRes] = await Promise.all([
         checkHealth().catch(err => ({ status: 'offline', error: err.message })),
         fetchMetrics().catch(err => null),
         fetchRecoveryCases({
@@ -68,7 +67,8 @@ function App() {
           riskLevel: filters.riskLevel,
           search: filters.search,
           limit: 100
-        }).catch(err => null)
+        }).catch(err => null),
+        fetchAuditLogs({ limit: 50 }).catch(err => null)
       ]);
 
       setHealthStatus(hRes);
@@ -82,6 +82,10 @@ function App() {
         setConnectionError(null);
       } else if (!mRes) {
         setConnectionError('Backend API server unreachable');
+      }
+
+      if (aRes && aRes.data) {
+        setAuditLogs(aRes.data);
       }
 
       setLastUpdatedTime(new Date());
@@ -139,8 +143,8 @@ function App() {
   ).length;
 
   return (
-    <div className="app-container executive-app">
-      {/* Executive Top Header */}
+    <div className="app-container fintech-app">
+      {/* Executive Light Header */}
       <ExecutiveHeader
         healthStatus={healthStatus}
         lastUpdatedTime={lastUpdatedTime}
@@ -148,28 +152,31 @@ function App() {
         pendingApprovalsCount={pendingApprovalsCount}
         onOpenApprovals={() => setActiveTab('approval')}
         onRefresh={handleRefreshAll}
+        activeTab={activeTab}
+        onTabSwitch={handleTabSwitch}
+        casesCount={cases.length}
       />
 
       <main className="main-layout">
         {connectionError && (
-          <div className="connection-warning-banner">
+          <div className="status-pill status-danger">
             ⚠️ Connection Warning: {connectionError} — Retrying in background...
           </div>
         )}
 
-        {/* 1. Executive Metric KPI Cards */}
+        {/* Executive Metric KPI Cards */}
         <section className="metrics-section">
           <MetricsOverview metrics={metrics} loading={loadingMetrics} />
         </section>
 
-        {/* 2. Visual Centerpieces: Autonomous Recovery Funnel & Intelligence Analytics */}
-        <section className="centerpiece-grid">
-          <RecoveryFunnel cases={cases} metrics={metrics} />
-          <AiIntelligenceAnalytics cases={cases} />
-        </section>
-
-        {/* 3. Main Navigation Tabs */}
+        {/* Primary Navigation Tabs */}
         <div className="tabs-bar">
+          <button
+            className={`tab-btn ${activeTab === 'overview' ? 'active' : ''}`}
+            onClick={() => handleTabSwitch('overview')}
+          >
+            📊 Overview Analytics
+          </button>
           <button
             className={`tab-btn ${activeTab === 'cases' ? 'active' : ''}`}
             onClick={() => handleTabSwitch('cases')}
@@ -186,17 +193,27 @@ function App() {
             className={`tab-btn ${activeTab === 'policy' ? 'active' : ''}`}
             onClick={() => handleTabSwitch('policy')}
           >
-            ⚙️ Policy &amp; Benchmarks
+            ⚙️ Policies &amp; Benchmarks
           </button>
           <button
             className={`tab-btn ${activeTab === 'audit' ? 'active' : ''}`}
             onClick={() => handleTabSwitch('audit')}
           >
-            📜 Live Audit Stream
+            📜 Audit Activity Stream
           </button>
         </div>
 
-        {/* 4. Tab Content Panels */}
+        {/* Tab Content Panels */}
+        {activeTab === 'overview' && (
+          <>
+            <section className="centerpiece-grid">
+              <RecoveryFunnel cases={cases} metrics={metrics} />
+              <AiIntelligenceAnalytics cases={cases} />
+            </section>
+            <LiveActivityFeed logs={auditLogs} loading={loadingAudit} onRefresh={loadAuditLogs} />
+          </>
+        )}
+
         {activeTab === 'cases' && (
           <RecoveryCasesTable
             cases={cases}

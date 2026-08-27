@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { approveHumanCase, rejectHumanCase } from '../services/api';
 
-export default function HumanApprovalQueue({ cases, onRefresh }) {
+export default function HumanApprovalQueue({ cases = [], onRefresh }) {
   const [processingId, setProcessingId] = useState(null);
+  const [actionError, setActionError] = useState(null);
 
-  // Filter high value cases or UNKNOWN diagnosis requiring approval
-  const pendingCases = cases.filter(c => 
+  // Filter cases requiring manager approval (high-value >= ₹15k or UNKNOWN diagnosis)
+  const approvalCases = cases.filter(c => 
     c.status !== 'RECOVERED' && 
     c.status !== 'TERMINATED' && 
     (parseInt(c.amount_at_risk_paise || 0, 10) >= 1500000 || c.decisions?.[0]?.diagnosed_root_cause === 'UNKNOWN')
@@ -13,11 +14,12 @@ export default function HumanApprovalQueue({ cases, onRefresh }) {
 
   const handleApprove = async (caseId) => {
     setProcessingId(caseId);
+    setActionError(null);
     try {
       await approveHumanCase(caseId);
       if (onRefresh) onRefresh();
     } catch (err) {
-      alert(`Approval Error: ${err.message}`);
+      setActionError(err.message || 'Approval failed');
     } finally {
       setProcessingId(null);
     }
@@ -25,25 +27,33 @@ export default function HumanApprovalQueue({ cases, onRefresh }) {
 
   const handleReject = async (caseId) => {
     setProcessingId(caseId);
+    setActionError(null);
     try {
-      await rejectHumanCase(caseId, 'Rejected by manager via Human Approval Queue');
+      await rejectHumanCase(caseId, 'Rejected by merchant manager');
       if (onRefresh) onRefresh();
     } catch (err) {
-      alert(`Rejection Error: ${err.message}`);
+      setActionError(err.message || 'Rejection failed');
     } finally {
       setProcessingId(null);
     }
   };
 
   return (
-    <div className="approval-section">
-      <div className="table-controls">
-        <h3>🛡️ Manager Human Approval Queue ({pendingCases.length} Pending)</h3>
-        <button className="btn-secondary" onClick={onRefresh}>🔄 Refresh Queue</button>
+    <div className="approval-card">
+      <div className="card-header-row">
+        <div>
+          <h3 className="section-title">🛡️ Manager Human Approval Queue ({approvalCases.length} Pending)</h3>
+          <p className="section-subtext">High-value transactions (&ge;₹15,000) and unclassified cases flagged for human review</p>
+        </div>
+        <button className="btn-secondary-luxury" onClick={onRefresh}>
+          🔄 Refresh Queue
+        </button>
       </div>
 
-      <div className="table-container">
-        <table className="cases-table">
+      {actionError && <div className="error-banner mb-3">⚠️ {actionError}</div>}
+
+      <div className="table-container-luxury">
+        <table className="cases-table-luxury">
           <thead>
             <tr>
               <th>Customer</th>
@@ -55,52 +65,56 @@ export default function HumanApprovalQueue({ cases, onRefresh }) {
             </tr>
           </thead>
           <tbody>
-            {pendingCases.length === 0 ? (
+            {approvalCases.length === 0 ? (
               <tr>
-                <td colSpan="6" className="text-center py-4">
-                  No cases currently require human approval.
+                <td colSpan="6" className="py-5 text-center text-muted">
+                  No cases currently require human manager approval.
                 </td>
               </tr>
             ) : (
-              pendingCases.map((c) => {
+              approvalCases.map((c) => {
                 const isHighValue = parseInt(c.amount_at_risk_paise || 0, 10) >= 1500000;
+                const flagReason = isHighValue ? 'High-Value Check (≥₹15k)' : 'Unclassified AI Cause';
+
                 return (
                   <tr key={c.id}>
                     <td>
                       <div className="customer-cell">
-                        <span className="customer-name">{c.customer?.name}</span>
+                        <strong className="customer-name">{c.customer?.name || 'Valued Customer'}</strong>
                         <span className="customer-sub">{c.customer?.email}</span>
                       </div>
                     </td>
                     <td>
-                      <span className="amount-cell text-danger">₹{c.amount_at_risk_rupees}</span>
+                      <strong className="amount-cell text-emerald">₹{c.amount_at_risk_rupees}</strong>
                     </td>
                     <td>
-                      <span className="badge badge-risk-high">
-                        {isHighValue ? 'High Value (≥₹15k)' : 'Unknown Diagnosis'}
+                      <span className="badge badge-risk-high">{flagReason}</span>
+                    </td>
+                    <td>
+                      <span className="badge badge-ai">
+                        {c.decisions?.[0]?.diagnosed_root_cause || 'UNKNOWN'}
                       </span>
                     </td>
                     <td>
-                      <code>{c.decisions?.[0]?.diagnosed_root_cause || 'UNKNOWN'}</code>
+                      <span className="badge badge-status-detected">{c.status}</span>
                     </td>
                     <td>
-                      <span className="badge badge-status-recovering">REQUIRES APPROVAL</span>
-                    </td>
-                    <td>
-                      <div className="action-button-group">
+                      <div className="header-buttons">
                         <button
-                          className="btn-primary-sm"
+                          className="btn-primary"
+                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.78rem' }}
                           onClick={() => handleApprove(c.id)}
                           disabled={processingId === c.id}
                         >
-                          {processingId === c.id ? 'Processing...' : '✅ Approve & Issue Link'}
+                          {processingId === c.id ? 'Approving...' : '✓ Approve'}
                         </button>
                         <button
-                          className="btn-secondary"
+                          className="btn-secondary-luxury"
+                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.78rem' }}
                           onClick={() => handleReject(c.id)}
                           disabled={processingId === c.id}
                         >
-                          ❌ Reject
+                          ✕ Reject
                         </button>
                       </div>
                     </td>

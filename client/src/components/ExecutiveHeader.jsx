@@ -6,7 +6,10 @@ export default function ExecutiveHeader({
   onOpenSimulator,
   pendingApprovalsCount,
   onOpenApprovals,
-  onRefresh
+  onRefresh,
+  activeTab,
+  onTabSwitch,
+  casesCount
 }) {
   const isOnline = healthStatus?.status === 'ok';
 
@@ -27,12 +30,12 @@ export default function ExecutiveHeader({
         <div className="header-status-indicators">
           <div className={`status-pill ${isOnline ? 'status-emerald' : 'status-danger'}`}>
             <span className={`pulse-dot ${isOnline ? 'dot-emerald' : 'dot-danger'}`}></span>
-            {isOnline ? 'SYSTEM OPERATIONAL' : 'SYSTEM OFFLINE'}
+            {isOnline ? '● Operational' : '● Offline'}
           </div>
 
-          <div className="status-pill status-cyan">
-            <span className="dot-cyan"></span>
-            Razorpay: TEST MODE
+          <div className="status-pill status-blue">
+            <span className="dot-blue"></span>
+            Razorpay: TEST MODE · Connected
           </div>
 
           {lastUpdatedTime && (
