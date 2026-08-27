@@ -8,6 +8,36 @@ export default function RecoveryCasesTable({
   onSelectCase,
   onRefresh
 }) {
+  // Client-side instant search & filter evaluation
+  const searchLower = (filters.search || '').toLowerCase().trim();
+
+  const filteredCases = cases.filter((c) => {
+    // 1. Search text filter (Name, Email, Case ID, Error Code)
+    if (searchLower) {
+      const nameMatch = c.customer?.name?.toLowerCase().includes(searchLower);
+      const emailMatch = c.customer?.email?.toLowerCase().includes(searchLower);
+      const idMatch = c.id?.toLowerCase().includes(searchLower);
+      const errorMatch = (c.error_reason || c.payment_failure?.error_reason || '').toLowerCase().includes(searchLower);
+
+      if (!nameMatch && !emailMatch && !idMatch && !errorMatch) {
+        return false;
+      }
+    }
+
+    // 2. Status filter
+    if (filters.status && filters.status !== 'ALL') {
+      if (c.status !== filters.status) return false;
+    }
+
+    // 3. Risk Level filter
+    if (filters.riskLevel && filters.riskLevel !== 'ALL') {
+      const level = c.risk?.risk_level || c.risk_level || 'LOW';
+      if (level.toUpperCase() !== filters.riskLevel.toUpperCase()) return false;
+    }
+
+    return true;
+  });
+
   return (
     <div className="cases-section-container">
       {/* Controls Bar Above Table */}
@@ -21,6 +51,15 @@ export default function RecoveryCasesTable({
             onChange={(e) => onFilterChange('search', e.target.value)}
             className="search-control-input"
           />
+          {filters.search && (
+            <button
+              className="btn-clear-search"
+              onClick={() => onFilterChange('search', '')}
+              title="Clear search"
+            >
+              ✕
+            </button>
+          )}
         </div>
 
         <div className="filters-control-group">
@@ -76,20 +115,23 @@ export default function RecoveryCasesTable({
                   Loading active recovery cases...
                 </td>
               </tr>
-            ) : cases.length === 0 ? (
+            ) : filteredCases.length === 0 ? (
               <tr>
                 <td colSpan="7" className="py-5 text-center text-muted">
-                  No matching recovery cases found.
+                  {searchLower ? `No recovery cases matching "${filters.search}"` : 'No matching recovery cases found.'}
                 </td>
               </tr>
             ) : (
-              cases.map((c) => {
+              filteredCases.map((c) => {
                 const isRecovered = c.status === 'RECOVERED';
                 const isRecovering = c.status === 'RECOVERING';
-                const riskLevel = c.risk_level || 'LOW';
+                const riskLevel = c.risk?.risk_level || c.risk_level || 'LOW';
+                const riskScore = c.risk?.risk_score !== undefined ? c.risk.risk_score : (c.risk_score || 0);
                 const riskBadgeClass = riskLevel === 'CRITICAL' ? 'badge-risk-critical' :
                                       riskLevel === 'HIGH' ? 'badge-risk-high' :
                                       riskLevel === 'MEDIUM' ? 'badge-risk-medium' : 'badge-risk-low';
+                const errorReason = c.error_reason || c.payment_failure?.error_reason || 'payment_failed';
+                const amountRupees = c.amount_at_risk_rupees || (c.amount_at_risk_paise / 100).toFixed(2);
 
                 return (
                   <tr key={c.id} className={isRecovered ? 'row-recovered' : ''}>
@@ -101,17 +143,17 @@ export default function RecoveryCasesTable({
                     </td>
                     <td>
                       <span className="error-reason-code">
-                        {c.payment_failure?.error_reason || 'payment_failed'}
+                        {errorReason}
                       </span>
                     </td>
                     <td>
                       <span className={`amount-cell ${isRecovered ? 'text-emerald' : ''}`}>
-                        ₹{c.amount_at_risk_rupees}
+                        ₹{amountRupees}
                       </span>
                     </td>
                     <td>
                       <span className={`badge ${riskBadgeClass}`}>
-                        {riskLevel} ({c.risk_score || 0}/100)
+                        {riskLevel} ({riskScore}/100)
                       </span>
                     </td>
                     <td>
