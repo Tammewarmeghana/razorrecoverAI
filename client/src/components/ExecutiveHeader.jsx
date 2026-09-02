@@ -18,10 +18,10 @@ export default function ExecutiveHeader({
         <div className="brand-badge-icon">⚡</div>
         <div className="brand-text-group">
           <div className="brand-title-row">
-            <h1 className="brand-title-main">RAZORRECOVER AI</h1>
-            <span className="brand-tag">AUTONOMOUS ENGINE</span>
+            <h1 className="brand-title-main">RazorRecover AI</h1>
+            <span className="brand-tag">Autonomous Revenue Engine</span>
           </div>
-          <p className="brand-subtext">Autonomous AI Revenue Recovery for Razorpay</p>
+          <p className="brand-subtext">Enterprise Failed Payment Intelligence for Razorpay</p>
         </div>
       </div>
 
@@ -29,12 +29,12 @@ export default function ExecutiveHeader({
         <div className="header-status-indicators">
           <div className={`status-pill ${isOnline ? 'status-emerald' : 'status-danger'}`}>
             <span className={`pulse-dot ${isOnline ? 'dot-emerald' : 'dot-danger'}`}></span>
-            {isOnline ? 'SYSTEM OPERATIONAL' : 'SYSTEM OFFLINE'}
+            {isOnline ? 'System Operational' : 'Offline'}
           </div>
 
           <div className="status-pill status-cyan">
             <span className="dot-cyan"></span>
-            Razorpay: TEST MODE
+            Razorpay Test Mode
           </div>
 
           {lastUpdatedTime && (
@@ -48,9 +48,9 @@ export default function ExecutiveHeader({
           <button
             className="btn-theme-toggle"
             onClick={onToggleTheme}
-            title="Toggle Dark / Light Theme"
+            title="Toggle Theme"
           >
-            {theme === 'dark' ? '🌙 Dark Mode' : '☀️ Light Mode'}
+            {theme === 'dark' ? '🌙 Dark' : '☀️ Light'}
           </button>
 
           <button className="btn-sim-trigger" onClick={onOpenSimulator}>
@@ -64,7 +64,7 @@ export default function ExecutiveHeader({
             </button>
           )}
 
-          <button className="btn-icon-refresh" onClick={onRefresh} title="Refresh All Data">
+          <button className="btn-icon-refresh" onClick={onRefresh} title="Refresh Data">
             🔄
           </button>
         </div>

@@ -24,12 +24,12 @@ export default function MetricsOverview({ metrics, loading }) {
   return (
     <div className="metrics-executive-grid">
       {/* Card 1: Revenue Recovered */}
-      <div className="metric-exec-card card-emerald">
+      <div className="metric-exec-card">
         <div className="metric-exec-header">
           <span className="metric-exec-label">REVENUE RECOVERED</span>
-          <span className="metric-exec-icon icon-emerald">💰</span>
+          <span className="badge badge-status-recovered">RECOVERED</span>
         </div>
-        <div className="metric-exec-value val-emerald">
+        <div className="metric-exec-value text-emerald">
           ₹{recoveredRupees.toLocaleString('en-IN')}
         </div>
         <div className="metric-exec-subtext">
@@ -38,44 +38,44 @@ export default function MetricsOverview({ metrics, loading }) {
       </div>
 
       {/* Card 2: Recovery Rate */}
-      <div className="metric-exec-card card-violet">
+      <div className="metric-exec-card">
         <div className="metric-exec-header">
           <span className="metric-exec-label">RECOVERY RATE</span>
-          <span className="metric-exec-icon icon-violet">📈</span>
+          <span className="badge badge-ai">AUTONOMOUS</span>
         </div>
-        <div className="metric-exec-value val-violet">
+        <div className="metric-exec-value">
           {ratePercent}%
         </div>
         <div className="metric-exec-subtext">
-          <span>Autonomous AI conversion efficiency</span>
+          <span>AI recovery conversion rate</span>
         </div>
       </div>
 
       {/* Card 3: Failed Payment Cases */}
-      <div className="metric-exec-card card-cyan">
+      <div className="metric-exec-card">
         <div className="metric-exec-header">
           <span className="metric-exec-label">FAILED RECOVERY CASES</span>
-          <span className="metric-exec-icon icon-cyan">📋</span>
+          <span className="badge badge-status-detected">INGESTED</span>
         </div>
-        <div className="metric-exec-value val-cyan">
+        <div className="metric-exec-value">
           {totalFailed}
         </div>
         <div className="metric-exec-subtext">
-          <span>Ingested across {totalProcessed} transactions</span>
+          <span>Across {totalProcessed} total transactions</span>
         </div>
       </div>
 
       {/* Card 4: Revenue At Risk */}
-      <div className="metric-exec-card card-amber">
+      <div className="metric-exec-card">
         <div className="metric-exec-header">
           <span className="metric-exec-label">REVENUE AT RISK</span>
-          <span className="metric-exec-icon icon-amber">⚠️</span>
+          <span className="badge badge-risk-high">AT RISK</span>
         </div>
-        <div className="metric-exec-value val-amber">
+        <div className="metric-exec-value text-amber">
           ₹{atRiskRupees.toLocaleString('en-IN')}
         </div>
         <div className="metric-exec-subtext">
-          <span>Targeted for AI diagnosis &amp; recovery</span>
+          <span>Targeted for AI risk diagnosis</span>
         </div>
       </div>
     </div>
